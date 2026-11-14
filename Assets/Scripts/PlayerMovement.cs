@@ -2,11 +2,13 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Cinemachine;
 
-public class SimpleMove : MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
     public InputActionAsset actions;
     public Rigidbody rb;
     public CinemachineCamera vcam;
+
+    public bool isBeingPulled;
 
     public float speed = 5f;
     public float jumpForce = 5f;
@@ -107,6 +109,9 @@ public class SimpleMove : MonoBehaviour
         }
 
         float currentSpeed = dashTimer > 0f ? dashSpeed : speed;
-        rb.linearVelocity = new Vector3(dir.x * currentSpeed, rb.linearVelocity.y, dir.z * currentSpeed);
+        if (!isBeingPulled)
+        {
+            rb.linearVelocity = new Vector3(dir.x * currentSpeed, rb.linearVelocity.y, dir.z * currentSpeed);
+        }
     }
 }
