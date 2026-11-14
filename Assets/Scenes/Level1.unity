@@ -648,10 +648,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 161122964120673245, guid: 969728d5199b4464abe85b113e3bc8b7, type: 3}
-      propertyPath: m_Constraints
-      value: 80
-      objectReference: {fileID: 0}
     - target: {fileID: 1567606699703674210, guid: 969728d5199b4464abe85b113e3bc8b7, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -700,14 +696,6 @@ PrefabInstance:
       propertyPath: vcam
       value: 
       objectReference: {fileID: 1003195015}
-    - target: {fileID: 8580013851974031668, guid: 969728d5199b4464abe85b113e3bc8b7, type: 3}
-      propertyPath: dashFov
-      value: 85
-      objectReference: {fileID: 0}
-    - target: {fileID: 8580013851974031668, guid: 969728d5199b4464abe85b113e3bc8b7, type: 3}
-      propertyPath: dashDuration
-      value: 0.6
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
