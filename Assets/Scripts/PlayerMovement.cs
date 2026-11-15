@@ -4,114 +4,118 @@ using Unity.Cinemachine;
 
 public class PlayerMovement : MonoBehaviour
 {
+    private Grabber grabber;
+    [HideInInspector] public bool isBeingPulled;
+
+    [Header("References")]
     public InputActionAsset actions;
     public Rigidbody rb;
     public CinemachineCamera vcam;
 
-    public bool isBeingPulled;
-
+    [Header("Movement & Jump")]
     public float speed = 5f;
     public float jumpForce = 5f;
+    public float fallMultiplier = 2.2f;
+    public float lowJumpMultiplier = 2f;
+
+    [Header("Dash")]
     public float dashSpeed = 18f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1f;
     public float dashFov = 80f;
 
-    private InputAction moveAction;
-    private InputAction jumpAction;
-    private InputAction dashAction;
-    private float normalFov;
-    private float dashTimer;
-    private float dashCooldownTimer;
-    private bool isGrounded;
-    private bool canAirJump;
-    private bool canAirDash;
+    [Header("Landing Dip")]
+    public float landDipAmount = 0.25f;
+    public float landDipSpeed = 12f;
+
+    private InputActionMap playerMap;
+    private InputAction moveAction, jumpAction, dashAction;
+    private Vector3 baseCamOffset;
+    private float normalFov, dashTimer, dashCooldownTimer, currentDip;
+    private bool isGrounded, canAirDash;
 
     private void Awake()
     {
-        var map = actions.FindActionMap("Player");
-        moveAction = map.FindAction("Move");
-        jumpAction = map.FindAction("Jump");
-        dashAction = map.FindAction("Dash");
+        playerMap = actions.FindActionMap("Player");
+        moveAction = playerMap.FindAction("Move");
+        jumpAction = playerMap.FindAction("Jump");
+        dashAction = playerMap.FindAction("Dash");
+        grabber = GetComponent<Grabber>();
     }
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        rb.freezeRotation = true;
         normalFov = vcam.Lens.FieldOfView;
+        baseCamOffset = vcam.transform.localPosition;
     }
 
-    private void OnEnable()
-    {
-        actions.FindActionMap("Player").Enable();
-    }
+    private void OnEnable() => playerMap.Enable();
+    private void OnDisable() => playerMap.Disable();
 
-    private void OnDisable()
+    private void OnCollisionStay(Collision col)
     {
-        actions.FindActionMap("Player").Disable();
-    }
-
-    private void OnCollisionStay(Collision collision)
-    {
-        if (collision.contacts[0].normal.y > 0.5f)
+        for (int i = 0; i < col.contactCount; i++)
         {
-            isGrounded = canAirJump = canAirDash = true;
+            if (col.GetContact(i).normal.y > 0.5f)
+            {
+                if (!isGrounded) currentDip = -landDipAmount;
+                isGrounded = canAirDash = true;
+                return;
+            }
         }
     }
 
-    private void OnCollisionExit(Collision collision)
-    {
-        isGrounded = false;
-    }
+    private void OnCollisionExit(Collision col) => isGrounded = false;
 
     private void Update()
     {
-        dashTimer -= Time.deltaTime;
-        dashCooldownTimer -= Time.deltaTime;
+        float dt = Time.deltaTime;
+        dashTimer -= dt;
+        dashCooldownTimer -= dt;
 
-        if (jumpAction.WasPressedThisFrame() && (isGrounded || canAirJump))
+        if (!isBeingPulled)
         {
-            if (!isGrounded)
+            if (jumpAction.WasPressedThisFrame() && isGrounded)
             {
-                canAirJump = false;
+                isGrounded = false;
+                rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+                rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             }
 
-            isGrounded = false;
-            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-        }
-
-        if (dashAction.WasPressedThisFrame() && dashCooldownTimer <= 0f && (isGrounded || canAirDash))
-        {
-            if (!isGrounded)
+            if (dashAction.WasPressedThisFrame() && dashCooldownTimer <= 0f && (isGrounded || canAirDash))
             {
-                canAirDash = false;
+                canAirDash &= isGrounded;
+                dashTimer = dashDuration;
+                dashCooldownTimer = dashCooldown;
             }
-
-            dashTimer = dashDuration;
-            dashCooldownTimer = dashCooldown;
         }
 
-        float targetFov = dashTimer > 0f ? dashFov : normalFov;
-        vcam.Lens.FieldOfView = Mathf.Lerp(vcam.Lens.FieldOfView, targetFov, 15f * Time.deltaTime);
+        vcam.Lens.FieldOfView = Mathf.Lerp(vcam.Lens.FieldOfView, dashTimer > 0f ? dashFov : normalFov, 15f * dt);
+        currentDip = Mathf.Lerp(currentDip, 0f, landDipSpeed * dt);
+        vcam.transform.localPosition = baseCamOffset + Vector3.up * currentDip;
     }
 
     private void FixedUpdate()
     {
+        if (grabber && grabber.isGrabbing) return;
         Vector2 input = moveAction.ReadValue<Vector2>();
         Vector3 forward = Vector3.ProjectOnPlane(vcam.transform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(vcam.transform.right, Vector3.up).normalized;
-        Vector3 dir = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
 
-        if (dashTimer > 0f && dir == Vector3.zero)
-        {
-            dir = forward;
-        }
+        if (forward.sqrMagnitude > 0.01f)
+            rb.MoveRotation(Quaternion.LookRotation(forward));
 
-        float currentSpeed = dashTimer > 0f ? dashSpeed : speed;
         if (!isBeingPulled)
         {
+            Vector3 dir = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+            if (dashTimer > 0f && dir == Vector3.zero) dir = forward;
+            float currentSpeed = dashTimer > 0f ? dashSpeed : speed;
             rb.linearVelocity = new Vector3(dir.x * currentSpeed, rb.linearVelocity.y, dir.z * currentSpeed);
         }
+
+        float gravityMult = rb.linearVelocity.y < 0f ? fallMultiplier : (!jumpAction.IsPressed() ? lowJumpMultiplier : 1f);
+        rb.linearVelocity += Vector3.up * Physics.gravity.y * (gravityMult - 1f) * Time.fixedDeltaTime;
     }
 }

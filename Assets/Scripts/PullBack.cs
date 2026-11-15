@@ -1,102 +1,92 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.AI;
+using TMPro; // Required for TextMeshPro
 
+[RequireComponent(typeof(LineDrawer))]
 public class PullBack : MonoBehaviour
 {
-    [Header("References")]
-    public Rigidbody rb;
-    public PlayerMovement playerMovement;
-    public Transform anchorPoint;
-    public Grabber grabber;
-    public LineRenderer lineRenderer;
-
     [Header("Settings")]
-    public float stringHeightOffset = 0.6f;
-    public float navSampleRadius = 2f;
-    public float pullDuration = 5f;
-    public float pullForce = 35f;
-    public float maxPullSpeed = 20f;
-    public float stopDistance = 1.5f;
+    public float countdownTime = 10f;
+    public float pullSpeed = 15f;
 
-    private NavMeshPath navPath;
-    private Vector3[] corners = System.Array.Empty<Vector3>();
-    private float pullTimer;
-    private bool isPulled;
+    [Header("UI")]
+    public TMP_Text countdownText;
 
-    private void Start()
+    private LineDrawer lineDrawer;
+    private float timer;
+    private bool isCountingDown = false;
+
+    private void Awake()
     {
-        navPath = new NavMeshPath();
-
-        if (!anchorPoint)
-        {
-            anchorPoint = new GameObject("AnchorPoint").transform;
-            anchorPoint.position = transform.position;
-        }
-
-        if (lineRenderer)
-        {
-            lineRenderer.startWidth = lineRenderer.endWidth = 0.05f;
-            lineRenderer.useWorldSpace = true;
-        }
+        lineDrawer = GetComponent<LineDrawer>();
+        timer = countdownTime;
+        UpdateTimerText();
     }
 
     private void Update()
     {
-        if (!isPulled && grabber && grabber.isGrabbing)
-            SetPull(true);
-
-        if (!anchorPoint || !lineRenderer) return;
-
-        if (NavMesh.SamplePosition(anchorPoint.position, out NavMeshHit start, navSampleRadius, NavMesh.AllAreas) &&
-            NavMesh.SamplePosition(transform.position, out NavMeshHit end, navSampleRadius, NavMesh.AllAreas) &&
-            NavMesh.CalculatePath(start.position, end.position, NavMesh.AllAreas, navPath) &&
-            navPath.corners.Length >= 2)
+        // Start countdown automatically once tethered
+        if (lineDrawer.basePoint != null && !isCountingDown && !lineDrawer.isPullingBack)
         {
-            corners = navPath.corners;
-            Vector3 heightOffset = Vector3.up * stringHeightOffset;
+            ResetTimer();
+        }
 
-            for (int i = 1; i < corners.Length - 1; i++)
-                corners[i] += heightOffset;
+        if (isCountingDown)
+        {
+            timer -= Time.deltaTime;
+            UpdateTimerText();
 
-            corners.SetValue(anchorPoint.position + heightOffset, 0);
-            corners[corners.Length - 1] = transform.position + Vector3.up * (stringHeightOffset - 0.5f);
-
-            lineRenderer.positionCount = corners.Length;
-            lineRenderer.SetPositions(corners);
+            if (timer <= 0f)
+            {
+                isCountingDown = false;
+                StartCoroutine(PullBackRoutine());
+            }
         }
     }
 
-    private void FixedUpdate()
+    public void ResetTimer()
     {
-        if (!isPulled || !anchorPoint) return;
+        timer = countdownTime;
+        isCountingDown = true;
+        UpdateTimerText();
+    }
 
-        pullTimer -= Time.fixedDeltaTime;
-        if (pullTimer <= 0f || Vector3.Distance(transform.position, anchorPoint.position) <= stopDistance)
+    private void UpdateTimerText()
+    {
+        if (countdownText != null)
         {
-            SetPull(false);
-            return;
+            int roundedTime = Mathf.CeilToInt(Mathf.Max(0f, timer));
+            countdownText.text = "TimeTill Pull: " + roundedTime;
+        }
+    }
+
+    private IEnumerator PullBackRoutine()
+    {
+        Vector3[] points = lineDrawer.currentCorners;
+        if (points == null || points.Length < 2) yield break;
+
+        lineDrawer.isPullingBack = true;
+
+        for (int i = points.Length - 2; i >= 0; i--)
+        {
+            Vector3 targetPos = new Vector3(points[i].x, transform.position.y, points[i].z);
+
+            while (Vector3.Distance(transform.position, targetPos) > 0.1f)
+            {
+                transform.position = Vector3.MoveTowards(transform.position, targetPos, pullSpeed * Time.deltaTime);
+                yield return null;
+            }
+
+            if (lineDrawer.line.positionCount > 2)
+            {
+                lineDrawer.line.positionCount--;
+            }
         }
 
-        Vector3 target = corners.Length >= 2 ? corners[corners.Length - 2] : anchorPoint.position;
-        Vector3 dir = Vector3.ProjectOnPlane(target - transform.position, Vector3.up);
+        transform.position = new Vector3(lineDrawer.basePoint.position.x, transform.position.y, lineDrawer.basePoint.position.z);
+        lineDrawer.isPullingBack = false;
 
-        if (dir.sqrMagnitude > 0.001f)
-            rb.AddForce(dir.normalized * pullForce, ForceMode.Acceleration);
-
-        Vector3 flatVel = Vector3.ClampMagnitude(new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z), maxPullSpeed);
-        rb.linearVelocity = new Vector3(flatVel.x, rb.linearVelocity.y, flatVel.z);
-    }
-
-    public void SetPull(bool active)
-    {
-        isPulled = active;
-        if (active) pullTimer = pullDuration;
-        if (playerMovement) playerMovement.isBeingPulled = active;
-    }
-
-    public void SetNewAnchor(Transform newAnchor)
-    {
-        anchorPoint = newAnchor;
-        SetPull(false);
+        // Reset the timer so the line continues drawing and counting down again
+        ResetTimer();
     }
 }
