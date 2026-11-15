@@ -1,7 +1,7 @@
-using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(Rigidbody))]
 public class Grabber : MonoBehaviour
 {
     [Header("Input & State")]
@@ -20,6 +20,7 @@ public class Grabber : MonoBehaviour
     InputAction grab;
     Transform target;
     Rigidbody rb;
+    readonly Collider[] hits = new Collider[16];
 
     void Awake()
     {
@@ -33,38 +34,52 @@ public class Grabber : MonoBehaviour
     void Update()
     {
         if (grab.WasPressedThisFrame())
-        {
-            target = Physics.OverlapSphere(transform.position, grabDistance, handleLayer)
-                .OrderBy(h => (h.transform.position - transform.position).sqrMagnitude)
-                .FirstOrDefault()?.transform;
-
-            SetGrab(target != null);
-        }
+            SetGrab(FindClosest());
         else if (grab.WasReleasedThisFrame() && isGrabbing)
-        {
-            SetGrab(false);
-        }
+            SetGrab(null);
 
         if (!isGrabbing) return;
 
         Vector3 dir = target.position - transform.position;
         dir.y = 0f;
         if (dir.sqrMagnitude > 0.001f)
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 10f * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 1f - Mathf.Exp(-10f * Time.deltaTime));
     }
 
     void LateUpdate()
     {
         if (!isGrabbing) return;
 
-        hand.position = Vector3.Lerp(hand.position, target.TransformPoint(positionOffset), 15f * Time.deltaTime);
-        hand.rotation = Quaternion.Slerp(hand.rotation, target.rotation * Quaternion.Euler(rotationOffset), 15f * Time.deltaTime);
+        float t = 1f - Mathf.Exp(-15f * Time.deltaTime);
+        hand.SetPositionAndRotation(
+            Vector3.Lerp(hand.position, target.TransformPoint(positionOffset), t),
+            Quaternion.Slerp(hand.rotation, target.rotation * Quaternion.Euler(rotationOffset), t)
+        );
     }
 
-    void SetGrab(bool state)
+    Transform FindClosest()
     {
-        isGrabbing = state;
-        if (rb) rb.isKinematic = state;
-        if (!state) target = null;
+        int count = Physics.OverlapSphereNonAlloc(transform.position, grabDistance, hits, handleLayer);
+        Transform closest = null;
+        float minDist = float.MaxValue;
+        Vector3 pos = transform.position;
+
+        for (int i = 0; i < count; i++)
+        {
+            float dist = (hits[i].transform.position - pos).sqrMagnitude;
+            if (dist < minDist)
+            {
+                minDist = dist;
+                closest = hits[i].transform;
+            }
+        }
+        return closest;
+    }
+
+    void SetGrab(Transform newTarget)
+    {
+        target = newTarget;
+        isGrabbing = target != null;
+        rb.isKinematic = isGrabbing;
     }
 }
