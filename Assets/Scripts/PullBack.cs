@@ -1,92 +1,77 @@
 using System.Collections;
 using UnityEngine;
-using TMPro; // Required for TextMeshPro
+using UnityEngine.AI;
+using TMPro;
 
-[RequireComponent(typeof(LineDrawer))]
+[RequireComponent(typeof(LineDrawer), typeof(NavMeshAgent), typeof(PlayerMovement))]
 public class PullBack : MonoBehaviour
 {
-    [Header("Settings")]
     public float countdownTime = 10f;
     public float pullSpeed = 15f;
-
-    [Header("UI")]
     public TMP_Text countdownText;
 
+    public float RemainingRatio => countdownTime > 0f ? Mathf.Clamp01(timer / countdownTime) : 1f;
+
     private LineDrawer lineDrawer;
+    private NavMeshAgent agent;
+    private PlayerMovement movement;
     private float timer;
-    private bool isCountingDown = false;
 
     private void Awake()
     {
         lineDrawer = GetComponent<LineDrawer>();
-        timer = countdownTime;
-        UpdateTimerText();
+        agent = GetComponent<NavMeshAgent>();
+        movement = GetComponent<PlayerMovement>();
+        agent.enabled = false;
+        ResetTimer();
     }
 
     private void Update()
     {
-        // Start countdown automatically once tethered
-        if (lineDrawer.basePoint != null && !isCountingDown && !lineDrawer.isPullingBack)
-        {
-            ResetTimer();
-        }
+        if (!lineDrawer.basePoint || movement.isBeingPulled) return;
 
-        if (isCountingDown)
-        {
-            timer -= Time.deltaTime;
-            UpdateTimerText();
+        timer -= Time.deltaTime;
+        UpdateUI();
 
-            if (timer <= 0f)
-            {
-                isCountingDown = false;
-                StartCoroutine(PullBackRoutine());
-            }
-        }
+        if (timer <= 0f)
+            StartCoroutine(PullRoutine());
     }
 
     public void ResetTimer()
     {
+        if (movement.isBeingPulled) return;
         timer = countdownTime;
-        isCountingDown = true;
-        UpdateTimerText();
+        UpdateUI();
     }
 
-    private void UpdateTimerText()
+    private void UpdateUI()
     {
-        if (countdownText != null)
-        {
-            int roundedTime = Mathf.CeilToInt(Mathf.Max(0f, timer));
-            countdownText.text = "TimeTill Pull: " + roundedTime;
-        }
+        if (countdownText)
+            countdownText.text = "TimeTill Pull: " + Mathf.CeilToInt(Mathf.Max(0f, timer));
     }
 
-    private IEnumerator PullBackRoutine()
+    private IEnumerator PullRoutine()
     {
-        Vector3[] points = lineDrawer.currentCorners;
-        if (points == null || points.Length < 2) yield break;
+        movement.isBeingPulled = true;
+        movement.rb.linearVelocity = Vector3.zero;
+        movement.rb.isKinematic = true;
 
-        lineDrawer.isPullingBack = true;
+        agent.enabled = true;
+        agent.speed = pullSpeed;
+        agent.acceleration = 100f;
+        agent.SetDestination(lineDrawer.basePoint.position);
+        yield return null;
 
-        for (int i = points.Length - 2; i >= 0; i--)
+        float timeout = 5f;
+        while (agent.enabled && timeout > 0f && (agent.pathPending || agent.remainingDistance > 0.5f))
         {
-            Vector3 targetPos = new Vector3(points[i].x, transform.position.y, points[i].z);
-
-            while (Vector3.Distance(transform.position, targetPos) > 0.1f)
-            {
-                transform.position = Vector3.MoveTowards(transform.position, targetPos, pullSpeed * Time.deltaTime);
-                yield return null;
-            }
-
-            if (lineDrawer.line.positionCount > 2)
-            {
-                lineDrawer.line.positionCount--;
-            }
+            timeout -= Time.deltaTime;
+            yield return null;
         }
 
-        transform.position = new Vector3(lineDrawer.basePoint.position.x, transform.position.y, lineDrawer.basePoint.position.z);
-        lineDrawer.isPullingBack = false;
-
-        // Reset the timer so the line continues drawing and counting down again
+        agent.enabled = false;
+        movement.rb.isKinematic = false;
+        movement.isBeingPulled = false;
         ResetTimer();
     }
 }

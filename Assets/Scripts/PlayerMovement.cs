@@ -18,11 +18,12 @@ public class PlayerMovement : MonoBehaviour
     public float fallMultiplier = 2.2f;
     public float lowJumpMultiplier = 2f;
 
-    [Header("Dash")]
+    [Header("Dash & FOV")]
     public float dashSpeed = 18f;
     public float dashDuration = 0.2f;
     public float dashCooldown = 1f;
     public float dashFov = 80f;
+    public float pullFov = 85f;
 
     [Header("Landing Dip")]
     public float landDipAmount = 0.25f;
@@ -92,14 +93,17 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        vcam.Lens.FieldOfView = Mathf.Lerp(vcam.Lens.FieldOfView, dashTimer > 0f ? dashFov : normalFov, 15f * dt);
+        float targetFov = isBeingPulled ? pullFov : (dashTimer > 0f ? dashFov : normalFov);
+        vcam.Lens.FieldOfView = Mathf.Lerp(vcam.Lens.FieldOfView, targetFov, 15f * dt);
+
         currentDip = Mathf.Lerp(currentDip, 0f, landDipSpeed * dt);
         vcam.transform.localPosition = baseCamOffset + Vector3.up * currentDip;
     }
 
     private void FixedUpdate()
     {
-        if (grabber && grabber.isGrabbing) return;
+        if (isBeingPulled || (grabber && grabber.isGrabbing)) return;
+
         Vector2 input = moveAction.ReadValue<Vector2>();
         Vector3 forward = Vector3.ProjectOnPlane(vcam.transform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(vcam.transform.right, Vector3.up).normalized;
@@ -107,13 +111,10 @@ public class PlayerMovement : MonoBehaviour
         if (forward.sqrMagnitude > 0.01f)
             rb.MoveRotation(Quaternion.LookRotation(forward));
 
-        if (!isBeingPulled)
-        {
-            Vector3 dir = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
-            if (dashTimer > 0f && dir == Vector3.zero) dir = forward;
-            float currentSpeed = dashTimer > 0f ? dashSpeed : speed;
-            rb.linearVelocity = new Vector3(dir.x * currentSpeed, rb.linearVelocity.y, dir.z * currentSpeed);
-        }
+        Vector3 dir = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+        if (dashTimer > 0f && dir == Vector3.zero) dir = forward;
+        float currentSpeed = dashTimer > 0f ? dashSpeed : speed;
+        rb.linearVelocity = new Vector3(dir.x * currentSpeed, rb.linearVelocity.y, dir.z * currentSpeed);
 
         float gravityMult = rb.linearVelocity.y < 0f ? fallMultiplier : (!jumpAction.IsPressed() ? lowJumpMultiplier : 1f);
         rb.linearVelocity += Vector3.up * Physics.gravity.y * (gravityMult - 1f) * Time.fixedDeltaTime;
