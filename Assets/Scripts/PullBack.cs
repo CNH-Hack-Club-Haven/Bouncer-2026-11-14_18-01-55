@@ -60,6 +60,7 @@ public class PullBack : MonoBehaviour
         agent.enabled = true;
         agent.speed = pullSpeed;
         agent.acceleration = 100f;
+        agent.stoppingDistance = 0f;
         agent.SetDestination(lineDrawer.basePoint.position);
         yield return null;
 
@@ -68,6 +69,7 @@ public class PullBack : MonoBehaviour
             yield return null;
         }
 
+        transform.position = new Vector3(lineDrawer.basePoint.position.x, transform.position.y, lineDrawer.basePoint.position.z);
         agent.enabled = false;
         movement.rb.isKinematic = false;
         movement.isBeingPulled = false;
