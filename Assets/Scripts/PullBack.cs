@@ -19,7 +19,7 @@ public class PullBack : MonoBehaviour
 
     private void Awake()
     {
-        gameObject.transform.position = startingTether.transform.position;
+        //gameObject.transform.position = startingTether.transform.position;
         lineDrawer = GetComponent<LineDrawer>();
         agent = GetComponent<NavMeshAgent>();
         movement = GetComponent<PlayerMovement>();
