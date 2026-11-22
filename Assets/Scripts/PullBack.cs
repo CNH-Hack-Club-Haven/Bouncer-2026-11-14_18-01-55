@@ -59,16 +59,18 @@ public class PullBack : MonoBehaviour
         agent.enabled = true;
         agent.speed = pullSpeed;
         agent.acceleration = 100f;
+        agent.stoppingDistance = 0f;
         agent.SetDestination(lineDrawer.basePoint.position);
         yield return null;
 
         float timeout = 5f;
-        while (agent.enabled && timeout > 0f && (agent.pathPending || agent.remainingDistance > 0.5f))
+        while (agent.enabled && timeout > 0f && (agent.pathPending || agent.remainingDistance > 0.05f))
         {
             timeout -= Time.deltaTime;
             yield return null;
         }
 
+        transform.position = new Vector3(lineDrawer.basePoint.position.x, transform.position.y, lineDrawer.basePoint.position.z);
         agent.enabled = false;
         movement.rb.isKinematic = false;
         movement.isBeingPulled = false;
