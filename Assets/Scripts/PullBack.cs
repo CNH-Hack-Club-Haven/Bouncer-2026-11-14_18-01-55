@@ -11,7 +11,7 @@ public class PullBack : MonoBehaviour
     public TMP_Text countdownText;
 
     public float RemainingRatio => countdownTime > 0f ? Mathf.Clamp01(timer / countdownTime) : 1f;
-
+    public GameObject startingTether;
     private LineDrawer lineDrawer;
     private NavMeshAgent agent;
     private PlayerMovement movement;
@@ -19,6 +19,7 @@ public class PullBack : MonoBehaviour
 
     private void Awake()
     {
+        gameObject.transform.position = startingTether.transform.position;
         lineDrawer = GetComponent<LineDrawer>();
         agent = GetComponent<NavMeshAgent>();
         movement = GetComponent<PlayerMovement>();
@@ -62,10 +63,8 @@ public class PullBack : MonoBehaviour
         agent.SetDestination(lineDrawer.basePoint.position);
         yield return null;
 
-        float timeout = 5f;
-        while (agent.enabled && timeout > 0f && (agent.pathPending || agent.remainingDistance > 0.5f))
+        while (agent.enabled && (agent.pathPending || agent.remainingDistance > 0.5f))
         {
-            timeout -= Time.deltaTime;
             yield return null;
         }
 
