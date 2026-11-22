@@ -175,6 +175,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6934979893113400950, guid: 0cff21e012eef444180d2463eba9a5ed, type: 3}
+      propertyPath: m_ControllerManager.Controllers.Array.data[0].Input.Gain
+      value: 5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -247,15 +251,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4921034144477435971, guid: 924442b92a85acb43ab4766f1dd2a0c4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 48.39789
+      value: 37.2
       objectReference: {fileID: 0}
     - target: {fileID: 4921034144477435971, guid: 924442b92a85acb43ab4766f1dd2a0c4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 19.65163
+      value: 9.22
       objectReference: {fileID: 0}
     - target: {fileID: 4921034144477435971, guid: 924442b92a85acb43ab4766f1dd2a0c4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 619.9547
+      value: 623.1
       objectReference: {fileID: 0}
     - target: {fileID: 4921034144477435971, guid: 924442b92a85acb43ab4766f1dd2a0c4, type: 3}
       propertyPath: m_LocalRotation.w
@@ -671,6 +675,7 @@ GameObject:
   - component: {fileID: 1828694231}
   - component: {fileID: 1828694230}
   - component: {fileID: 1828694229}
+  - component: {fileID: 1828694232}
   m_Layer: 0
   m_Name: Terrain
   m_TagString: Untagged
@@ -748,12 +753,44 @@ Transform:
   m_GameObject: {fileID: 1828694228}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -231, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1828694232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1828694228}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: ae076eaaad3914e489d9a2d446667292, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1001 &1975440454
 PrefabInstance:
   m_ObjectHideFlags: 0
